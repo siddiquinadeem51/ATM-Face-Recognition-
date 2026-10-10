@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank of Future - ATM Facial Biometric Terminal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #080d19;
+            --panel-bg: rgba(13, 23, 42, 0.75);
+            --border-cyan: #00f0ff;
+            --border-glow: rgba(0, 240, 255, 0.4);
+            --accent-green: #00ff88;
+            --accent-red: #ff3366;
+            --accent-amber: #ffaa00;
+            --text-main: #e2f1ff;
+            --text-dim: #7d96b3;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(0, 150, 255, 0.08) 0%, transparent 70%),
+                linear-gradient(to bottom, #050811, #0a101f);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* ATM Header */
+        header {
+            background: rgba(10, 17, 34, 0.9);
+            border-bottom: 2px solid var(--border-cyan);
+            box-shadow: 0 0 20px var(--border-glow);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .brand-logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #00f0ff, #0055ff);
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            color: #000;
+            font-size: 20px;
+        }
+
+        .brand-title h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 22px;
+            letter-spacing: 2px;
+            color: #fff;
+            text-shadow: 0 0 10px var(--border-cyan);
+        }
+
+        .brand-title p {
+            font-size: 13px;
+            color: var(--border-cyan);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .terminal-status {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .status-badge {
+            background: rgba(0, 240, 255, 0.1);
+            border: 1px solid var(--border-cyan);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--accent-green);
+            box-shadow: 0 0 10px var(--accent-green);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        /* Main Container */
+        main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 25px;
+            padding: 25px;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Viewport Container */
+        .scanner-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .viewport-wrapper {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            max-height: 580px;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid var(--border-cyan);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #webcam {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        #overlayCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: scaleX(-1);
+            pointer-events: none;
+        }
+
+        /* Scanning HUD */
+        .hud-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+        }
+
+        .hud-corner {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border: 3px solid var(--border-cyan);
+        }
+
+        .top-left { top: 15px; left: 15px; border-right: none; border-bottom: none; }
+        .top-right { top: 15px; right: 15px; border-left: none; border-bottom: none; }
+        .bottom-left { bottom: 15px; left: 15px; border-right: none; border-top: none; }
+        .bottom-right { bottom: 15px; right: 15px; border-left: none; border-top: none; }
+
+        .laser-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--border-cyan), transparent);
+            box-shadow: 0 0 15px var(--border-cyan);
+            animation: scan 3s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: 0%; opacity: 0.8; }
+            50% { top: 100%; opacity: 0.8; }
+            100% { top: 0%; opacity: 0.8; }
+        }
+
+        /* Result Banners */
+        .status-banner {
+            background: var(--panel-bg);
+            border: 2px solid var(--border-cyan);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 15px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Orbitron', sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        .status-banner.match {
+            border-color: var(--accent-green);
+            box-shadow: 0 0 25px rgba(0, 255, 136, 0.4);
+            background: rgba(0, 40, 20, 0.8);
+        }
+
+        .status-banner.no-match {
+            border-color: var(--accent-red);
+            box-shadow: 0 0 25px rgba(255, 51, 102, 0.4);
+            background: rgba(40, 0, 10, 0.8);
+        }
+
+        .status-banner.warning {
+            border-color: var(--accent-amber);
+            box-shadow: 0 0 25px rgba(255, 170, 0, 0.4);
+            background: rgba(40, 30, 0, 0.8);
+        }
+
+        .banner-text {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+
+        .banner-subtext {
+            font-size: 13px;
+            font-family: 'Rajdhani', sans-serif;
+            color: var(--text-dim);
+            margin-top: 2px;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .panel-card {
+            background: var(--panel-bg);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .card-header {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 15px;
+            letter-spacing: 1.5px;
+            color: var(--border-cyan);
+            border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Form & Controls */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        label {
+            font-size: 13px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        select {
+            background: rgba(5, 10, 20, 0.8);
+            border: 1px solid var(--border-cyan);
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            outline: none;
+            cursor: pointer;
+        }
+
+        select:focus {
+            box-shadow: 0 0 10px var(--border-cyan);
+        }
+
+        /* Metric Gauge Bars */
+        .metric-row {
+            margin-bottom: 15px;
+        }
+
+        .metric-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .progress-bar {
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #00f0ff, var(--accent-green));
+            transition: width 0.3s ease, background 0.3s ease;
+        }
+
+        .low-light-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 170, 0, 0.15);
+            border: 1px solid var(--accent-amber);
+            color: var(--accent-amber);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-top: 10px;
+        }
+
+        .system-info {
+            font-size: 13px;
+            color: var(--text-dim);
+            line-height: 1.6;
+        }
+
+        .system-info p span {
+            color: var(--border-cyan);
+            font-weight: 600;
+        }
+
+        /* Voice / Sound Toggle */
+        .sound-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 15px;
+            font-size: 12px;
+            color: var(--text-dim);
+            border-top: 1px solid rgba(0, 240, 255, 0.1);
+            background: rgba(5, 10, 20, 0.6);
+        }
+
+        /* ATM Verification Success Modal Alert */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(5, 12, 22, 0.88);
+            backdrop-filter: blur(10px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.35s ease;
+        }
+
+        .modal-backdrop.active {
+            display: flex !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+
+        .modal-card {
+            background: rgba(12, 25, 18, 0.95);
+            border: 2px solid var(--accent-green);
+            box-shadow: 0 0 50px rgba(0, 255, 136, 0.5);
+            border-radius: 16px;
+            padding: 35px 45px;
+            max-width: 580px;
+            width: 90%;
+            text-align: center;
+            transform: scale(0.85);
+            transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .modal-backdrop.active .modal-card {
+            transform: scale(1);
+        }
+
+        .modal-icon {
+            width: 70px;
+            height: 70px;
+            background: var(--accent-green);
+            color: #000;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            font-weight: 900;
+            margin: 0 auto 20px;
+            box-shadow: 0 0 25px var(--accent-green);
+        }
+
+        .modal-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 20px;
+            color: #fff;
+            letter-spacing: 1.5px;
+            margin-bottom: 12px;
+        }
+
+        .modal-user {
+            font-size: 20px;
+            color: var(--accent-green);
+            font-weight: 700;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .modal-desc {
+            font-size: 15px;
+            color: var(--text-main);
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .modal-btn {
+            background: var(--accent-green);
+            color: #000;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 800;
+            font-size: 14px;
+            padding: 14px 32px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn:hover {
+            background: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 0 30px var(--accent-green);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <div class="brand-logo">ATM</div>
+            <div class="brand-title">
+                <h1>BANK OF FUTURE</h1>
+                <p>Facial Biometric Verification Terminal</p>
+            </div>
+        </div>
+        <div class="terminal-status">
+            <div class="status-badge">
+                <div class="pulse-dot"></div>
+                TERMINAL ONLINE
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Webcam View & HUD -->
+        <section class="scanner-section">
+            <div class="viewport-wrapper">
+                <video id="webcam" autoplay playsinline muted></video>
+                <canvas id="overlayCanvas"></canvas>
+
+                <div class="hud-overlay">
+                    <div class="hud-corner top-left"></div>
+                    <div class="hud-corner top-right"></div>
+                    <div class="hud-corner bottom-left"></div>
+                    <div class="hud-corner bottom-right"></div>
+                    <div class="laser-line"></div>
+                </div>
+            </div>
+
+            <!-- Real-time Terminal Banner -->
+            <div id="statusBanner" class="status-banner warning">
+                <div>
+                    <div id="bannerMainText" class="banner-text">INITIALIZING FACIAL SCAN...</div>
+                    <div id="bannerSubText" class="banner-subtext">Align your face inside the scan frame</div>
+                </div>
+                <div id="alignmentBadge" class="status-badge" style="display: none;">ALIGNMENT OK</div>
+            </div>
+        </section>
+
+        <!-- Right Side Controls & Analytics -->
+        <aside class="control-panel">
+            <!-- Account Holder Selection -->
+            <div class="panel-card">
+                <div class="card-header">
+                    ATM ACCOUNT HOLDER
+                </div>
+                <div class="form-group">
+                    <label for="referenceSelect">Target Reference Profile</label>
+                    <select id="referenceSelect">
+                        {% for img in available_images %}
+                            <option value="{{ img }}" {% if img == active_reference %}selected{% endif %}>
+                                {{ loop.index }}. {{ img }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="system-info">
+                    <p>Account Name: <span id="accountUserLabel">{{ account_user }}</span></p>
+                    <p>Model: <span>ArcFace (512-D)</span></p>
+                    <p>Threshold: <span>70.0% Similarity</span></p>
+                </div>
+            </div>
+
+            <!-- Realtime Metrics -->
+            <div class="panel-card">
+                <div class="card-header">
+                    BIOMETRIC METRICS
+                </div>
+                
+                <div class="metric-row">
+                    <div class="metric-label">
+                        <span>Face Match Score</span>
+                        <span id="similarityValue">0.0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div id="similarityFill" class="progress-fill"></div>
+                    </div>
+                </div>
+
+                <div class="metric-row">
+                    <div class="metric-label">
+                        <span>Ambient Luminance</span>
+                        <span id="luminanceValue">0</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div id="luminanceFill" class="progress-fill" style="background: var(--border-cyan);"></div>
+                    </div>
+                </div>
+
+                <div id="lowLightTag" class="low-light-tag" style="display: none;">
+                    🌙 AUTO LOW-LIGHT ENHANCEMENT ACTIVE
+                </div>
+
+                <label class="sound-toggle">
+                    <input type="checkbox" id="soundEnabled" checked>
+                    <span>Enable Voice & Sound Announcement</span>
+                </label>
+            </div>
+
+            <!-- Security Log -->
+            <div class="panel-card">
+                <div class="card-header">
+                    SECURITY AUDIT
+                </div>
+                <div class="system-info">
+                    <p>Detector: <span>MTCNN / OpenCV</span></p>
+                    <p>FPS: <span id="fpsCounter">--</span></p>
+                    <p>Last Verification: <span id="lastVerificationTime">Never</span></p>
+                </div>
+            </div>
+        </aside>
+    <!-- ATM Success Verification Modal Alert -->
+    <div id="successModal" class="modal-backdrop">
+        <div class="modal-card">
+            <div class="modal-icon">✓</div>
+            <div class="modal-title">ATM BIOMETRIC VERIFICATION SUCCESSFUL</div>
+            <div id="modalAccountUser" class="modal-user">ACCOUNT HOLDER: CUSTOMER (VERIFIED ✓)</div>
+            <p class="modal-desc">
+                Biometric identity confirmed with ArcFace 512-D multi-domain vectors.<br>
+                Access granted to ATM banking services.
+            </p>
+            <button class="modal-btn" onclick="closeSuccessModal()">CONTINUE TO ATM BANKING SERVICES</button>
+        </div>
+    </div>
+
+    <footer>
+        BANK OF FUTURE &copy; 2026 ATM Biometric Facial Verification System | Powered by DeepFace & ArcFace
+    </footer>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('overlayCanvas');
+        const ctx = canvas.getContext('2d');
+        const referenceSelect = document.getElementById('referenceSelect');
+        const accountUserLabel = document.getElementById('accountUserLabel');
+        const similarityValue = document.getElementById('similarityValue');
+        const similarityFill = document.getElementById('similarityFill');
+        const luminanceValue = document.getElementById('luminanceValue');
+        const luminanceFill = document.getElementById('luminanceFill');
+        const lowLightTag = document.getElementById('lowLightTag');
+        const statusBanner = document.getElementById('statusBanner');
+        const bannerMainText = document.getElementById('bannerMainText');
+        const bannerSubText = document.getElementById('bannerSubText');
+        const soundEnabled = document.getElementById('soundEnabled');
+        const fpsCounter = document.getElementById('fpsCounter');
+        const lastVerificationTime = document.getElementById('lastVerificationTime');
+
+        let isProcessing = false;
+        let lastSuccessSpeechTime = 0;
+        let frameCount = 0;
+        let lastFpsUpdate = performance.now();
+
+        // Initialize Camera
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" }
+                });
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    requestAnimationFrame(processLoop);
+                };
+            } catch (err) {
+                alert("Camera access denied or unavailable: " + err.message);
+                bannerMainText.textContent = "CAMERA ERROR";
+                bannerSubText.textContent = "Please allow webcam permissions";
+            }
+        }
+
+        // Change Active Account Reference
+        referenceSelect.addEventListener('change', async () => {
+            const selectedImage = referenceSelect.value;
+            try {
+                const res = await fetch('/set_reference', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image_name: selectedImage })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    accountUserLabel.textContent = data.account_user;
+                }
+            } catch (e) {
+                console.error("Failed to change reference:", e);
+            }
+        });
+
+        // Main Frame Loop
+        async function processLoop() {
+            // FPS Calculation
+            frameCount++;
+            const now = performance.now();
+            if (now - lastFpsUpdate >= 1000) {
+                fpsCounter.textContent = frameCount + " FPS";
+                frameCount = 0;
+                lastFpsUpdate = now;
+            }
+
+            if (!isProcessing && video.readyState === video.HAVE_ENOUGH_DATA) {
+                isProcessing = true;
+                await captureAndVerifyFrame();
+                isProcessing = false;
+            }
+
+            requestAnimationFrame(processLoop);
+        }
+
+        // Capture Frame and send to Flask
+        async function captureAndVerifyFrame() {
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = video.videoWidth;
+            tempCanvas.height = video.videoHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+            const dataUrl = tempCanvas.toDataURL('image/jpeg', 0.7);
+
+            try {
+                const response = await fetch('/verify_frame', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: dataUrl })
+                });
+
+                const res = await response.json();
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                if (!res.success) {
+                    updateStatusBanner("error", "SYSTEM ERROR", res.error || "Processing failed");
+                    return;
+                }
+
+                // Update Ambient Luminance
+                luminanceValue.textContent = res.luminance || 0;
+                const lumPct = Math.min(100, Math.max(0, ((res.luminance || 0) / 255) * 100));
+                luminanceFill.style.width = lumPct + "%";
+                lowLightTag.style.display = res.is_low_light ? "inline-flex" : "none";
+
+                // No Face Detected
+                if (!res.face_detected) {
+                    similarityValue.textContent = "0.0%";
+                    similarityFill.style.width = "0%";
+                    updateStatusBanner("warning", "NO FACE DETECTED", "Please step into webcam frame");
+                    return;
+                }
+
+                // Multiple Faces
+                if (res.multiple_faces) {
+                    updateStatusBanner("warning", "MULTIPLE FACES DETECTED", "Only 1 user permitted at ATM");
+                    return;
+                }
+
+                // Draw Bounding Box & Target HUD
+                const bbox = res.bbox;
+                if (bbox) {
+                    const boxColor = res.is_match ? "#00ff88" : "#ff3366";
+                    ctx.strokeStyle = boxColor;
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(bbox.x, bbox.y, bbox.w, bbox.h);
+
+                    // Corner accents on face bbox
+                    const cornerLen = 15;
+                    ctx.strokeStyle = "#00f0ff";
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.moveTo(bbox.x, bbox.y + cornerLen); ctx.lineTo(bbox.x, bbox.y); ctx.lineTo(bbox.x + cornerLen, bbox.y);
+                    ctx.moveTo(bbox.x + bbox.w - cornerLen, bbox.y); ctx.lineTo(bbox.x + bbox.w, bbox.y); ctx.lineTo(bbox.x + bbox.w, bbox.y + cornerLen);
+                    ctx.stroke();
+                }
+
+                // Update Similarity Gauge
+                const score = res.similarity || 0;
+                similarityValue.textContent = score + "%";
+                similarityFill.style.width = Math.min(100, score) + "%";
+                similarityFill.style.background = res.is_match 
+                    ? "linear-gradient(90deg, #00ff88, #00f0ff)" 
+                    : "linear-gradient(90deg, #ff3366, #ffaa00)";
+
+                // Update Status Banner & Trigger Modal Alert
+                if (res.is_match) {
+                    updateStatusBanner("match", "ACCOUNT VERIFIED", "Welcome, " + res.account_user + "! Proceeding to ATM Services...");
+                    lastVerificationTime.textContent = new Date().toLocaleTimeString();
+
+                    triggerSuccessModal(res.account_user, res.clean_customer_name);
+                } else {
+                    closeSuccessModal();
+                    if (res.other_matched_user) {
+                        updateStatusBanner("no-match", "WRONG ACCOUNT DETECTED", "Face matches profile: " + res.other_matched_user);
+                    } else {
+                        updateStatusBanner("no-match", "ACCESS DENIED", "Face does not match registered ATM account holder");
+                    }
+                }
+
+            } catch (err) {
+                console.error("Frame verification error:", err);
+            }
+        }
+
+        let isModalActive = false;
+
+        function triggerSuccessModal(accountUser, cleanName) {
+            const modal = document.getElementById('successModal');
+            document.getElementById('modalAccountUser').textContent = "ACCOUNT HOLDER: " + accountUser + " (VERIFIED ✓)";
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+        }
+
+        function closeSuccessModal() {
+            const modal = document.getElementById('successModal');
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+        }
+
+        function updateStatusBanner(type, title, subtitle) {
+            statusBanner.className = "status-banner " + type;
+            bannerMainText.textContent = title;
+            bannerSubText.textContent = subtitle;
+        }
+
+        function playChimeSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const freqs = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                freqs.forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime + idx * 0.1);
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime + idx * 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + idx * 0.1 + 0.25);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(audioCtx.currentTime + idx * 0.1);
+                    osc.stop(audioCtx.currentTime + idx * 0.1 + 0.25);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        function speakAnnouncement(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Clear any queued speech
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 0.95;
+                utterance.pitch = 1.0;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        window.onload = startCamera;
+    </script>
+</body>
+</html>
